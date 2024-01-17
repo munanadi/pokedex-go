@@ -32,8 +32,9 @@ type pokedexLocations struct {
 
 type RequestConfig struct {
 	// *string cause it can be nill too
-	Next *string
-	Prev *string
+	Next  *string
+	Prev  *string
+	Cache *pokecache.Cache
 }
 
 func getCommands() map[string]cliCommand {
@@ -63,12 +64,14 @@ func getCommands() map[string]cliCommand {
 
 func main() {
 
+	const CACHE_REFRESH_IN_SECONDS int64 = 20
+
 	// Store values in cache for 10s
-	timeInterval := 10 * time.Second
+	timeInterval := time.Duration(CACHE_REFRESH_IN_SECONDS) * time.Second
 	cache := pokecache.NewCache(timeInterval)
 	fmt.Println(cache)
 
-	config := &RequestConfig{}
+	config := &RequestConfig{Next: nil, Prev: nil, Cache: cache}
 
 	for {
 		fmt.Printf("Pokedex > ")
@@ -110,26 +113,44 @@ func commandMap(config *RequestConfig) error {
 	// Start at 0 always
 	url := ""
 	if config.Next == nil {
-		fmt.Println("Starting from first")
-		url = "https://pokeapi.co/api/v2/location/"
+		fmt.Println("starting from first")
+		url = "https://pokeapi.co/api/v2/location/?offset=0&limit=20"
 	} else {
 		url = *config.Next
 	}
 
-	var locations *pokedexLocations = getPokedexLocations(url, config)
+	var data []byte
+	// Check in cache
+	if v, ok := config.Cache.Get(url); !ok {
+		fmt.Println("not in cache, fetching..")
+		data = getPokedexLocations(url, config)
+		config.Cache.Add(url, data)
+	} else {
+		fmt.Println("found in cache..")
+		data = v
+	}
+
+	var locations *pokedexLocations
+	err := json.Unmarshal(data, &locations)
+	if err != nil {
+		log.Fatalln("unmarshalling body data failed")
+	}
 
 	var next, previous *string = &locations.Next, &locations.Previous
 
 	config.Next = next
-	if *previous == "" {
+	if len(*previous) == 0 {
+		fmt.Println("prev set as nil")
 		config.Prev = nil
 	} else {
+		fmt.Println("prev set as ", *previous)
 		config.Prev = previous
 	}
 
 	for _, location := range locations.Results {
-		fmt.Println(location.Name)
+		fmt.Printf("%s \t", location.Name)
 	}
+	fmt.Printf("\n")
 
 	return errors.New("something went wrong in map")
 }
@@ -143,23 +164,45 @@ func commandMapb(config *RequestConfig) error {
 		fmt.Println("you are on the first page, can't go back, try going forward using `map`")
 	} else {
 		url := *config.Prev
-		var locations *pokedexLocations = getPokedexLocations(url, config)
+		var locations *pokedexLocations
+
+		fmt.Println(url, " is the url for prev")
+
+		var data []byte
+		// Check in cache
+		if v, ok := config.Cache.Get(url); !ok {
+			fmt.Println("not in cache, fetching..")
+			data = getPokedexLocations(url, config)
+			config.Cache.Add(url, data)
+		} else {
+			fmt.Println("found in cache..")
+			data = v
+		}
+
+		err := json.Unmarshal(data, &locations)
+		if err != nil {
+			log.Fatalln("unmarshalling body data failed")
+		}
 
 		var next, previous string = locations.Next, locations.Previous
 
 		config.Next = &next
-		config.Prev = &previous
+		if len(previous) == 0 {
+			config.Prev = nil
+		} else {
+			config.Prev = &previous
+		}
 
 		for _, location := range locations.Results {
-			fmt.Println(location.Name)
+			fmt.Printf("%s \t", location.Name)
 		}
+		fmt.Printf("\n")
 	}
 
 	return errors.New("something went wrong in mapb")
 }
 
-func getPokedexLocations(url string, config *RequestConfig) *pokedexLocations {
-	var locations pokedexLocations
+func getPokedexLocations(url string, config *RequestConfig) []byte {
 
 	res, err := http.Get(url)
 	if err != nil {
@@ -174,9 +217,6 @@ func getPokedexLocations(url string, config *RequestConfig) *pokedexLocations {
 	if err != nil {
 		log.Fatalln("something went wrong while fetching")
 	}
-	err = json.Unmarshal(body, &locations)
-	if err != nil {
-		log.Fatalln("something went wrong while unmarshalling")
-	}
-	return &locations
+
+	return body
 }
