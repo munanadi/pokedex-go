@@ -9,6 +9,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
+
+	"github.com/munanadi/pokedex/pokecache"
 )
 
 type cliCommand struct {
@@ -59,6 +62,11 @@ func getCommands() map[string]cliCommand {
 }
 
 func main() {
+
+	// Store values in cache for 10s
+	timeInterval := 10 * time.Second
+	cache := pokecache.NewCache(timeInterval)
+	fmt.Println(cache)
 
 	config := &RequestConfig{}
 
