@@ -22,7 +22,7 @@ func (c *Cache) Add(key string, val []byte) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	fmt.Printf("---Storing key: %s\n", key)
+	// fmt.Printf("---Storing key: %s\n", key)
 
 	c.cache[key] = cacheEntry{
 		createdAt: time.Now(),
@@ -32,7 +32,7 @@ func (c *Cache) Add(key string, val []byte) {
 
 // Get will set the cache value
 func (c *Cache) Get(key string) ([]byte, bool) {
-	fmt.Printf("---Fetching value for key %s\n", key)
+	// fmt.Printf("---Fetching value for key %s\n", key)
 
 	if _, ok := c.cache[key]; !ok {
 		return nil, false
@@ -52,7 +52,7 @@ func (c *Cache) reapLoop(timeInterval time.Duration) {
 		timeSinceCreatedInSeonds := timeSinceCreated.Abs().Seconds()
 		if timeSinceCreatedInSeonds > timeInterval.Seconds() {
 			// older value, throw it out
-			fmt.Printf("Deleting old value of key %s\n", k)
+			// fmt.Printf("Deleting old value of key %s\n", k)
 			delete(c.cache, k)
 		}
 	}
@@ -70,7 +70,7 @@ func NewCache(timeInterval time.Duration) *Cache {
 
 	go func() {
 		for range ticker.C {
-			fmt.Printf("\n---Running cleanup function---\n")
+			// fmt.Printf("\n---Running cleanup function---\n")
 			cache.reapLoop(timeInterval)
 			fmt.Printf("Pokedex > ")
 		}

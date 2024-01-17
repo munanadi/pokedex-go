@@ -187,6 +187,7 @@ func CommandCatch(config *pokehelp.RequestConfig, args ...[]string) error {
 	} else {
 		fmt.Printf("%s was caught!\n", pokemonName)
 		config.Pokedex[pokemonName] = *res
+		fmt.Println("You may now inspect it with the inspect command.")
 	}
 
 	return errors.New("something went wrong in catch")
@@ -212,4 +213,14 @@ func CommandInspect(config *pokehelp.RequestConfig, args ...[]string) error {
 	}
 
 	return errors.New("something went wrong in inspect")
+}
+
+func CommandPokedex(config *pokehelp.RequestConfig, args ...[]string) error {
+
+	fmt.Println("Your Pokedex:")
+	for _, pokemon := range config.Pokedex {
+		fmt.Println("- ", pokemon.Name)
+	}
+
+	return errors.New("something went wrong in pokedex")
 }
