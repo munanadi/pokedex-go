@@ -6,7 +6,9 @@ A CLI to fetch pokemon data from an [Pokedex API](https://pokeapi.co/)
 2. `exit`
 3. `map` - Fetches the locations in the map in pages of 20
 4. `mapb` - Fetches the previous 20 locations from current place
-5. `explore` - Lists the pokemon in a given area
+5. `explore <AREA_NAME>` - Lists the pokemon in a given area
+6. `catch <POKEMON_NAME>` - Try to catch the pokemon
+7. `inspect <POKEMON_NAME>` - Check stats of your caught pokemon
 
 ---
 

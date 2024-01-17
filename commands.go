@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
 
@@ -154,4 +155,61 @@ func CommandExplore(config *pokehelp.RequestConfig, args ...[]string) error {
 	}
 
 	return errors.New("something went wrong in explore")
+}
+
+func CommandCatch(config *pokehelp.RequestConfig, args ...[]string) error {
+
+	pokemonName := strings.Join(args[0], "")
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
+
+	baseUrl := "https://pokeapi.co/api/v2/pokemon/"
+	url := baseUrl + pokemonName
+
+	var res *pokehelp.Pokemon
+
+	var data []byte
+	// Check in cache
+	if v, ok := config.Cache.Get(url); !ok {
+		fmt.Println("not in cache, fetching..")
+		data, _ = pokehelp.GetBodyFromUrl(url, config)
+		config.Cache.Add(url, data)
+	} else {
+		fmt.Println("found in cache..")
+		data = v
+	}
+
+	json.Unmarshal(data, &res)
+
+	// Try to catch it
+	// TODO: 50/50 now, later try to include the experince in this equation
+	if rand.Intn(10) > 5 {
+		fmt.Printf("%s escaped!\n", pokemonName)
+	} else {
+		fmt.Printf("%s was caught!\n", pokemonName)
+		config.Pokedex[pokemonName] = *res
+	}
+
+	return errors.New("something went wrong in catch")
+}
+
+func CommandInspect(config *pokehelp.RequestConfig, args ...[]string) error {
+
+	pokemonName := strings.Join(args[0], "")
+
+	if _, ok := config.Pokedex[pokemonName]; !ok {
+		fmt.Println("you have not caught that pokemon")
+		return nil
+	}
+
+	pD := config.Pokedex[pokemonName]
+
+	name, height, weight, _, types := pD.Name, pD.Height, pD.Weight, pD.Stats, pD.Types
+
+	fmt.Printf("Name: %s\nHeight: %d\nWeight: %d", name, height, weight)
+	fmt.Printf("\nTypes\n")
+	for _, v := range types {
+		fmt.Println("\t - ", v.Type.Name)
+	}
+
+	return errors.New("something went wrong in inspect")
 }

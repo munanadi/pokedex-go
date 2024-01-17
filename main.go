@@ -44,6 +44,16 @@ func getCommands() map[string]cliCommand {
 			description: "Let's you explore a city area",
 			callback:    CommandExplore,
 		},
+		"catch": {
+			name:        "catch",
+			description: "Let's you catch a Pokemon",
+			callback:    CommandCatch,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "Let's you check on the Pokemon",
+			callback:    CommandInspect,
+		},
 	}
 }
 
@@ -54,9 +64,10 @@ func main() {
 
 	timeInterval := time.Duration(CACHE_REFRESH_IN_SECONDS) * time.Second
 	cache := pokecache.NewCache(timeInterval)
-	fmt.Println(cache)
 
-	config := &pokehelp.RequestConfig{Next: nil, Prev: nil, Cache: cache}
+	var pokedex = make(map[string]pokehelp.Pokemon)
+
+	config := &pokehelp.RequestConfig{Next: nil, Prev: nil, Cache: cache, Pokedex: pokedex}
 
 	for {
 		fmt.Printf("Pokedex > ")
