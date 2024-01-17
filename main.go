@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/munanadi/pokedex/pokecache"
@@ -17,7 +18,7 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(config *RequestConfig) error
+	callback    func(config *RequestConfig, args ...[]string) error
 }
 
 type pokedexLocations struct {
@@ -28,6 +29,59 @@ type pokedexLocations struct {
 		Name string `json:"name"`
 		URL  string `json:"url"`
 	} `json:"results"`
+}
+
+type pokedexLocationExplore struct {
+	EncounterMethodRates []struct {
+		EncounterMethod struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"encounter_method"`
+		VersionDetails []struct {
+			Rate    int `json:"rate"`
+			Version struct {
+				Name string `json:"name"`
+				URL  string `json:"url"`
+			} `json:"version"`
+		} `json:"version_details"`
+	} `json:"encounter_method_rates"`
+	GameIndex int `json:"game_index"`
+	ID        int `json:"id"`
+	Location  struct {
+		Name string `json:"name"`
+		URL  string `json:"url"`
+	} `json:"location"`
+	Name  string `json:"name"`
+	Names []struct {
+		Language struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"language"`
+		Name string `json:"name"`
+	} `json:"names"`
+	PokemonEncounters []struct {
+		Pokemon struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"pokemon"`
+		VersionDetails []struct {
+			EncounterDetails []struct {
+				Chance          int   `json:"chance"`
+				ConditionValues []any `json:"condition_values"`
+				MaxLevel        int   `json:"max_level"`
+				Method          struct {
+					Name string `json:"name"`
+					URL  string `json:"url"`
+				} `json:"method"`
+				MinLevel int `json:"min_level"`
+			} `json:"encounter_details"`
+			MaxChance int `json:"max_chance"`
+			Version   struct {
+				Name string `json:"name"`
+				URL  string `json:"url"`
+			} `json:"version"`
+		} `json:"version_details"`
+	} `json:"pokemon_encounters"`
 }
 
 type RequestConfig struct {
@@ -59,6 +113,11 @@ func getCommands() map[string]cliCommand {
 			description: "To go back 20 skips in map locations",
 			callback:    commandMapb,
 		},
+		"explore": {
+			name:        "explore",
+			description: "Let's you explore a city area",
+			callback:    commandExplore,
+		},
 	}
 }
 
@@ -78,20 +137,21 @@ func main() {
 		scanner := bufio.NewScanner(os.Stdin)
 		if ok := scanner.Scan(); ok {
 			for k, v := range getCommands() {
-				if k == scanner.Text() {
-					v.callback(config)
+				args := strings.Split(scanner.Text(), " ")
+				if k == args[0] {
+					v.callback(config, args[1:])
 				}
 			}
 		}
 	}
 }
 
-func commandExit(config *RequestConfig) error {
+func commandExit(config *RequestConfig, args ...[]string) error {
 	os.Exit(0)
 	return errors.New("something went wrong in exit")
 }
 
-func commandHelp(config *RequestConfig) error {
+func commandHelp(config *RequestConfig, args ...[]string) error {
 	commands := getCommands()
 	fmt.Printf(`Welcome to Pokedex
   Usage:
@@ -106,7 +166,7 @@ func commandHelp(config *RequestConfig) error {
 
 // commandMap will display 20 location areas in the world,
 // subsequent calls should fetch the next 20 locations
-func commandMap(config *RequestConfig) error {
+func commandMap(config *RequestConfig, args ...[]string) error {
 	// https://pokeapi.co/api/v2/location/{id or name}/ API to hit.
 
 	// Check if next exists and then make a call to that.
@@ -114,7 +174,7 @@ func commandMap(config *RequestConfig) error {
 	url := ""
 	if config.Next == nil {
 		fmt.Println("starting from first")
-		url = "https://pokeapi.co/api/v2/location/?offset=0&limit=20"
+		url = "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"
 	} else {
 		url = *config.Next
 	}
@@ -123,7 +183,7 @@ func commandMap(config *RequestConfig) error {
 	// Check in cache
 	if v, ok := config.Cache.Get(url); !ok {
 		fmt.Println("not in cache, fetching..")
-		data = getPokedexLocations(url, config)
+		data, _ = getBodyFromUrl(url, config)
 		config.Cache.Add(url, data)
 	} else {
 		fmt.Println("found in cache..")
@@ -148,16 +208,15 @@ func commandMap(config *RequestConfig) error {
 	}
 
 	for _, location := range locations.Results {
-		fmt.Printf("%s \t", location.Name)
+		fmt.Println(location.Name)
 	}
-	fmt.Printf("\n")
 
 	return errors.New("something went wrong in map")
 }
 
 // commandMapb will go back 20 location areas in the world,
 // a mehtod to go back, if you're on the first page, prints error.
-func commandMapb(config *RequestConfig) error {
+func commandMapb(config *RequestConfig, args ...[]string) error {
 
 	// Checking is previous is nil or empty string
 	if config.Prev == nil {
@@ -172,7 +231,7 @@ func commandMapb(config *RequestConfig) error {
 		// Check in cache
 		if v, ok := config.Cache.Get(url); !ok {
 			fmt.Println("not in cache, fetching..")
-			data = getPokedexLocations(url, config)
+			data, _ = getBodyFromUrl(url, config)
 			config.Cache.Add(url, data)
 		} else {
 			fmt.Println("found in cache..")
@@ -194,15 +253,45 @@ func commandMapb(config *RequestConfig) error {
 		}
 
 		for _, location := range locations.Results {
-			fmt.Printf("%s \t", location.Name)
+			fmt.Println(location.Name)
 		}
-		fmt.Printf("\n")
 	}
 
 	return errors.New("something went wrong in mapb")
 }
 
-func getPokedexLocations(url string, config *RequestConfig) []byte {
+func commandExplore(config *RequestConfig, args ...[]string) error {
+
+	cityAreaToExplore := strings.Join(args[0], "")
+	fmt.Printf("Exploring %s...\n", cityAreaToExplore)
+
+	baseUrl := "https://pokeapi.co/api/v2/location-area/"
+	url := baseUrl + cityAreaToExplore
+
+	var res *pokedexLocationExplore
+
+	var data []byte
+	// Check in cache
+	if v, ok := config.Cache.Get(url); !ok {
+		fmt.Println("not in cache, fetching..")
+		data, _ = getBodyFromUrl(url, config)
+		config.Cache.Add(url, data)
+	} else {
+		fmt.Println("found in cache..")
+		data = v
+	}
+
+	json.Unmarshal(data, &res)
+
+	fmt.Println("Found Pokemon:")
+	for _, v := range res.PokemonEncounters {
+		fmt.Printf("- %s\n", v.Pokemon.Name)
+	}
+
+	return errors.New("something went wrong in explore")
+}
+
+func getBodyFromUrl(url string, config *RequestConfig) ([]byte, error) {
 
 	res, err := http.Get(url)
 	if err != nil {
@@ -211,6 +300,7 @@ func getPokedexLocations(url string, config *RequestConfig) []byte {
 	body, err := io.ReadAll(res.Body)
 	res.Body.Close()
 
+	// TODO: Handle 404 and other stuff
 	if res.StatusCode > 299 {
 		log.Fatalf("Response failed with status code %d and body\n: %s\n", res.StatusCode, body)
 	}
@@ -218,5 +308,5 @@ func getPokedexLocations(url string, config *RequestConfig) []byte {
 		log.Fatalln("something went wrong while fetching")
 	}
 
-	return body
+	return body, nil
 }
