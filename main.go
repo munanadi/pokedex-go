@@ -63,14 +63,13 @@ func getCommands() map[string]cliCommand {
 }
 
 func main() {
-
 	// Store values in cache for seconds specified here
 	const CACHE_REFRESH_IN_SECONDS int64 = 30
 
 	timeInterval := time.Duration(CACHE_REFRESH_IN_SECONDS) * time.Second
 	cache := pokecache.NewCache(timeInterval)
 
-	var pokedex = make(map[string]pokehelp.Pokemon)
+	pokedex := make(map[string]pokehelp.Pokemon)
 
 	config := &pokehelp.RequestConfig{Next: nil, Prev: nil, Cache: cache, Pokedex: pokedex}
 

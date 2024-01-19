@@ -83,7 +83,6 @@ func CommandMap(config *pokehelp.RequestConfig, args ...[]string) error {
 // commandMapb will go back 20 location areas in the world,
 // a mehtod to go back, if you're on the first page, prints error.
 func CommandMapb(config *pokehelp.RequestConfig, args ...[]string) error {
-
 	// Checking is previous is nil or empty string
 	if config.Prev == nil {
 		fmt.Println("you are on the first page, can't go back, try going forward using `map`")
@@ -127,7 +126,6 @@ func CommandMapb(config *pokehelp.RequestConfig, args ...[]string) error {
 }
 
 func CommandExplore(config *pokehelp.RequestConfig, args ...[]string) error {
-
 	cityAreaToExplore := strings.Join(args[0], "")
 	fmt.Printf("Exploring %s...\n", cityAreaToExplore)
 
@@ -158,7 +156,6 @@ func CommandExplore(config *pokehelp.RequestConfig, args ...[]string) error {
 }
 
 func CommandCatch(config *pokehelp.RequestConfig, args ...[]string) error {
-
 	pokemonName := strings.Join(args[0], "")
 	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
 
@@ -194,7 +191,6 @@ func CommandCatch(config *pokehelp.RequestConfig, args ...[]string) error {
 }
 
 func CommandInspect(config *pokehelp.RequestConfig, args ...[]string) error {
-
 	pokemonName := strings.Join(args[0], "")
 
 	if _, ok := config.Pokedex[pokemonName]; !ok {
@@ -216,7 +212,6 @@ func CommandInspect(config *pokehelp.RequestConfig, args ...[]string) error {
 }
 
 func CommandPokedex(config *pokehelp.RequestConfig, args ...[]string) error {
-
 	fmt.Println("Your Pokedex:")
 	for _, pokemon := range config.Pokedex {
 		fmt.Println("- ", pokemon.Name)
